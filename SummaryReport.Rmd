@@ -201,16 +201,32 @@ ggplot(aes(x = best_parent_m_over_z),data = simp.peptide )+
 - We notice that the first 2 retention time bins (up to 35 minutes), we have limited representation of m/z, these domain mainly consists of peptides with m/z that are below the average m/z.
 - The rest of the retention time looks like a good representation of the overall m/z distribution. 
 
-
+# Exploring the intensities of the peptides
 
 ```{r,fig.width=12, fig.align="right", fig.height=4}
-simp.peptide$median.retentionTime.Bins <-cut(simp.peptide$median.retentionTimeMin,8)
 
 ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = simp.peptide )+
-        geom_point()+ facet_grid(. ~ median.retentionTime.Bins)+
-        theme_bw()+
+        geom_point(col = "navy",alpha = I(0.2))+ facet_grid(. ~ median.retentionTime.Bins)+
+        theme_bw()+ 
         ggtitle("Retention time bins (8 x 11 min bins)")
 ```
+
+# Explore Histidine containing peptides
+
+It appears that we have a good presence of Histidine containing peptides in the remaining subset:
+
+```{r,fig.width=12, fig.align="right", fig.height=4}
+# Explore at least one Histidine containing peptides
+
+simp.peptide$histidine <- ifelse(grepl("H",toupper(simp.peptide$sequence)),"At least one H","No H")
+
+
+ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = simp.peptide )+
+        geom_point(aes(color = histidine), alpha = I(0.3))+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
+        theme_bw()+ 
+        ggtitle("Retention time bins (8 x 11 min bins)")
+```
+
 
 
 # Algorihtm for the selection of peptides
@@ -218,5 +234,9 @@ ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = sim
 Peptides will be selected based on the following algorithm:
 
 - Divide the retention time span into 8 percentile bins.
-- For each retention time bin;
-- Rank peptides based on total intensity
+- For a given retention time bin:
+    + Prepare 10 equal m/z bins
+    + Rank peptides based on total intensity
+    + Choose the peptide with highest intensity from the peptides that contain H
+    + If the bin doesn't have any H containing peptide, then choose the peptide with highest intensity
+  
