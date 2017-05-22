@@ -17,7 +17,12 @@ output:
 knitr::opts_chunk$set(echo =FALSE, include = TRUE, message = FALSE,warning = FALSE)
 ```
 
-# Introduction
+# Introduction and Summary
+
+**The goal of this analysis is to obtain a list of consensus peptides that are consistently detected in our QC runs, with the ultimate purpose of developing quality standards to monitor LC retention time variations.**
+
+**I parsed a list of 80 unique peptides based on the criteria we discussed in our meeting last week. Briefly, these peptides are consistently identified across all the QC runs I described below. They span the entire retention time span, and wherever possible, the entire m/z span we observed across the retention time. As we discussed, I prioritized Histidine containing peptides wherever possible, and 78 out of the 2 final peptides contain at least 1 histidine. I provided the list of peptides along with their features.**  
+
 
 # Choosing the relevant QC directories for peptide selection
 
@@ -119,16 +124,23 @@ relevant.pep$bestScore <- as.numeric(relevant.pep$bestScore)
 
 # Choosing a 'score cut off'
 
-First we choose a bestScore cutoff:
+Karl suggested to apply a global score filter. In order to understand what would be a good score cutoff I looked the distribution of the **bestscores** for each peptide across all QC runs:
 
-```{r}
+```{r,fig.align='center', fig.width=4,fig.height=4}
 library(ggplot2)
 
-qplot(x = bestScore,data = relevant.pep,geom = "histogram", bins = 100)+theme_bw()
+ggplot(aes(x = bestScore),data = relevant.pep)+
+ geom_histogram( bins = 100,fill = "blue",color= "red")+
+        theme(axis.text.x=element_text(angle = 45),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"))+
+        ggtitle("Distribution of best peptide scores")+
+        xlab("Best peptide scores")
   
 ```
 
-Scores have a near Gaussian distribution with a mean `r round(mean(relevant.pep$bestScore),2)`. We choose to include peptides that have the bestScores above this mean score.
+Scores have a near Gaussian distribution with a mean of **`r round(mean(relevant.pep$bestScore),2)`**. We choose to include peptides that have the bestScores above this mean score.
 
 ```{r}
 library(dplyr)
@@ -140,9 +152,9 @@ This reduced the peptide list to **`r length(relevant.pep$bestScore)`** unique p
 
 # Distribution of retention time
 
+It would be a good idea to look at the distribution of retention times of the remaining peptides to ensure the distribution is not too skewed:
 
-
-```{r, fig.width=9}
+```{r, fig.align='center', fig.width=9,fig.height=4}
 
 # First simplify the data
 
@@ -155,10 +167,20 @@ retentionTimeMin <- apply(retentionTimeMin,2,as.numeric)
 relevant.pep$median.total.intensity <- apply(total.intensity,1,median)
 relevant.pep$median.retentionTimeMin <-apply(retentionTimeMin,1,median)
 
-hist(relevant.pep$median.retentionTimeMin, breaks = 20, col = "lightgreen",
+hist(relevant.pep$median.retentionTimeMin, breaks = 100, col = "purple",
      main = "Distribution of Median Retention Time (Min)",
      xlab = "Median Retention Time Across all QC runs")
 ```
+
+As we expected, we generally have more peptides in the higher retention time range.
+
+At this point, I simplified the data by using summary metrics that are robust to outliers. 
+
+Each peptide sequence will be associated with the following features:
+
+- median retention time across all QC runs (Min)
+- median total intensity across all QC runs
+- best parent m/z
 
 ```{r}
 # Simplified data
@@ -173,15 +195,24 @@ simp.peptide$best_parent_m_over_z <- as.numeric(simp.peptide$best_parent_m_over_
 
 # Distribution of m/z
 
-This subset of peptides have near gaussian m/z distribution:
+This subset of peptides have near-Gaussian m/z distribution:
 
-```{r}
-hist(simp.peptide$best_parent_m_over_z,col = "blue")
+```{r,fig.align='center', fig.width=4,fig.height=4}
+
+ggplot(aes(x = best_parent_m_over_z),data = simp.peptide)+
+ geom_histogram( bins = 100,fill = "red",color= "blue")+
+        theme(axis.text.x=element_text(angle = 45),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"))+
+        ggtitle("Distribution of best parent m/z")+
+        xlab("Best parent m/z")
+
 ```
 
-# Make 8 retention time bins
+# Partition data into 8 equal retention time bins
 
-We will partition the data based on 8 retention time bins as we discussed in our meeting:
+I partitioned the data based on 8 retention time bins as we discussed in our meeting:
 
 ```{r}
 #percentiles = quantile(simp.peptide$median.retentionTimeMin,probs = seq(0,1,0.1))
@@ -193,29 +224,53 @@ We will partition the data based on 8 retention time bins as we discussed in our
 simp.peptide$median.retentionTime.Bins <-cut(simp.peptide$median.retentionTimeMin,8)
 
 ggplot(aes(x = best_parent_m_over_z),data = simp.peptide )+
-        geom_histogram(fill = "blue", color = "black")+ facet_grid(. ~ median.retentionTime.Bins)+
-        theme_bw()+
-        ggtitle("Retention time bins (8 x 11 min bins)")
+        geom_histogram(fill = "navy", color = "red")+ facet_grid(. ~ median.retentionTime.Bins)+
+        theme(axis.text.x=element_text(angle = 45),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"),
+              strip.background = element_rect(fill = "slateblue1"))+
+        ggtitle("Retention time bins (8 x 11 min bins)")+
+         xlab("Best parent m/z")
 ```
 
 - We notice that the first 2 retention time bins (up to 35 minutes), we have limited representation of m/z, these domain mainly consists of peptides with m/z that are below the average m/z.
+- Perhaps this is expected: highly charged peptides elute faster and are not retained in the column beyond 35 minutes.
 - The rest of the retention time looks like a good representation of the overall m/z distribution. 
 
-# Exploring the intensities of the peptides
+# Evaluating the intensities of the peptides
+
+It is also important to check the intensity selection of the peptides in the retention bins: 
 
 ```{r,fig.width=12, fig.align="right", fig.height=4}
 
-ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = simp.peptide )+
+ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = simp.peptide )+
         geom_point(col = "navy",alpha = I(0.2))+ facet_grid(. ~ median.retentionTime.Bins)+
-        theme_bw()+ 
-        ggtitle("Retention time bins (8 x 11 min bins)")
+       theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"),
+              strip.background = element_rect(fill = "slateblue1"))+
+        ggtitle("Retention time bins (8 x 11 min bins)")+
+         xlab("Best parent m/z")
 ```
 
-# Explore Histidine containing peptides
+## Multivariate regression: Mean intensities are significantly reduced along with the retention time bins
+
+Next, fitting a multivariate regression model to answer the question: **are the mean intensity levels across the retention time bins significantly different from the fist retention time bin, adjusting for the best parent m/z?**
+
+```{r, results="markup"}
+lmFit <- lm(log10(median.total.intensity) ~ median.retentionTime.Bins + best_parent_m_over_z, data = simp.peptide)
+summary(lmFit)$coeff
+```
+
+I concluded that mean intensity is significantly and progressively reduced from the first retention time bin to the last retention time bin (p < 0.05). I am not certain whether this might bring any caveats, but I wanted to point out.
+
+# Assesing the representation of Histidine containing peptides
 
 It appears that we have a good presence of Histidine containing peptides in the remaining subset:
 
-```{r,fig.width=12, fig.align="right", fig.height=4}
+```{r,fig.width=12, fig.align="center", fig.height=4}
 # Explore at least one Histidine containing peptides
 
 simp.peptide$histidine <- ifelse(grepl("H",toupper(simp.peptide$sequence)),"At least one H","No H")
@@ -223,10 +278,14 @@ simp.peptide$histidine <- ifelse(grepl("H",toupper(simp.peptide$sequence)),"At l
 
 ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = simp.peptide )+
         geom_point(aes(color = histidine), alpha = I(0.3))+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
-        theme_bw()+ 
-        ggtitle("Retention time bins (8 x 11 min bins)")
+       theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"),
+              strip.background = element_rect(fill = "slateblue1"))+
+        ggtitle("Retention time bins (8 x 11 min bins)")+
+         xlab("Best parent m/z")
 ```
-
 
 
 # Algorihtm for the selection of peptides
@@ -279,26 +338,39 @@ selected.peptides <- peptide.selector(simp.peptide = simp.peptide)
 
 ```
 
-# Explore the final selection of peptides
+# Exploring the final selection of peptides
 
 
-```{r,fig.width=12, fig.align="right", fig.height=4}
+```{r,fig.width=12, fig.align="center", fig.height=4}
 # Explore at least one Histidine containing peptides
 
-
-
-ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = selected.peptides )+
-        geom_point(aes(color = histidine))+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
-        theme_bw()+ 
-        ggtitle("Retention time bins (8 x 11 min bins)")
+ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = selected.peptides )+
+        geom_line(color = "navy")+
+        geom_point(aes(color = histidine), size = 2)+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
+        theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
+              panel.background = element_rect(fill = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"),
+              strip.background = element_rect(fill = "slateblue1"))+ 
+        ggtitle("Retention time bins (8 x 11 min bins)")+
+        xlab("Best parent m/z")
 ```
 
-These **`r length(unique(selected.peptides$sequence))`** distinct peptides come from **`r length(unique(selected.peptides$accession_number))`** unique proteins (uniprot acession number).
+**Note that I just connected the peptide data points to make any trends in intensity fluctations more obvious.**
 
-# Final list of the 80 selected peptides and their features:
+These **`r length(unique(selected.peptides$sequence))`** distinct peptides come from **`r length(unique(selected.peptides$accession_number))`** unique proteins (uniprot accession number).
+
+# Final list of the 80 selected peptides and their features
+
+Therefore, we have selected a fair amount of peptides that are both representative (i.e: detected in all of the QC runs we profiled) as well as spanning retention time and m/z spans fairly well. I welcome your feedback on refining the selection of peptides as necessary.
+
+The current selection of the peptides are:
 
 ```{r}
 knitr::kable(selected.peptides, align = "c", format = "pandoc",row.names = F)
+setwd("Z:/LabMembers/Ozan/RetentionTimePeptides")
+write.csv(selected.peptides,file = "Selected.peptides.csv", row.names = FALSE)
+
 ```
 
   
