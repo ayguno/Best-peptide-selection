@@ -17,6 +17,8 @@ output:
 knitr::opts_chunk$set(echo =FALSE, include = TRUE, message = FALSE,warning = FALSE)
 ```
 
+___
+
 # Introduction and Summary
 
 **The goal of this analysis is to obtain a list of consensus peptides that are consistently detected in our QC runs, with the ultimate purpose of developing quality standards to monitor LC retention time variations.**
