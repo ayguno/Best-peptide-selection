@@ -1,5 +1,5 @@
 ---
-title: "Selection of peptides for retention time tracking"
+title: "Selection of peptides for retention time tracking - Second iteration"
 author: "Ozan Aygun"
 date: "May 2017"
 output:
@@ -78,7 +78,7 @@ Spectrum Mill protein-peptide report was prepared this file was obtained:
 setwd("Z:/LabMembers/Ozan/RetentionTimePeptides")
 
 # Initial loading:
- pPeptide <- read.csv2("T:/JurkatQC/Galileo/2017Q2/20170501/proteinPeptideComparisonColumnsExport.S.1.ssv",stringsAsFactors = FALSE, na.strings = c(""))
+ # pPeptide <- read.csv2("T:/JurkatQC/Galileo/2017Q2/20170501/proteinPeptideComparisonColumnsExport.S.1.ssv",stringsAsFactors = FALSE, na.strings = c(""))
 
  # Save as RDS for easy loading in future sessions
  saveRDS(pPeptide,file = "pPeptide.rds")
@@ -124,7 +124,53 @@ relevant.pep$bestScore <- as.numeric(relevant.pep$bestScore)
   
 ```
 
-# Choosing a 'score cut off'
+# Global cut offs
+
+Before going into peptide selection, I applied several filters based on your feedback and suggestions.
+
+## Exclude peptides with missed cleavages
+
+At this stage we filtered any peptide that contains **more than one K or R**, as this will indicate missed cleavages.
+
+```{r}
+library(stringr)
+
+number_of_RK <- str_count(toupper(relevant.pep$sequence__NA.), "R|K")
+
+relevant.pep <- relevant.pep[number_of_RK == 1,]
+
+```
+
+This reduced the peptide list to **`r length(relevant.pep$bestScore)`** unique peptides without missed cleavages.
+
+## Exclude peptides with Met, Cys and N-terminal pyro glutamic acid
+
+At this stage we filtered any peptide that contains **M, C or q (N-term)*.
+
+```{r}
+n_ter_q <- grepl("^q",relevant.pep$sequence__NA.)
+relevant.pep <- relevant.pep[!n_ter_q,]
+
+CorM <- grepl("C|c|m|M",relevant.pep$sequence__NA.)
+relevant.pep <- relevant.pep[!CorM,]
+```
+
+This reduced the peptide list to **`r length(relevant.pep$bestScore)`** unique peptides without missed cleavages, Met, Cys or N-terminal pyro glutamic acid.
+
+## Abundance (total intensity) cut off
+
+In the first iteration, Karl suggested to incorporate a customized intensity cut off. This will involve eliminating all peptides that are >1/3 the abundance of the median of 50 most abundant (**REMAINING**)peptides.
+
+```{r}
+
+total.intensity <- relevant.pep[,which(grepl("total.intensity",names(relevant.pep)))] 
+Top50_most.abundant.peptides.median <- 
+```
+
+
+
+
+# Choosing a 'score cut off': relaxing the earlier score cut off
 
 Karl suggested to apply a global score filter. In order to understand what would be a good score cutoff I looked the distribution of the **bestscores** for each peptide across all QC runs:
 
