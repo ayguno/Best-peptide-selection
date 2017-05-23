@@ -163,7 +163,7 @@ In the first iteration, Karl suggested to incorporate a customized intensity cut
 
 Here, you can view what happens when I apply this filter to the remaining peptides:
 
-```{r,fig.align='center', fig.width=4,fig.height=4}
+```{r,fig.align='center', fig.width=7,fig.height=4}
 library(ggplot2)
 
 total.intensity <- relevant.pep[,which(grepl("totalIntensity",names(relevant.pep)))] 
