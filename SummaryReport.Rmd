@@ -1,7 +1,7 @@
 ---
 title: "Selection of peptides for retention time tracking - Second iteration"
 author: "Ozan Aygun"
-date: "May 2017"
+date: "May 24th, 2017"
 output:
   html_document:
     depth: 3
@@ -23,7 +23,9 @@ ___
 
 **The goal of this analysis is to obtain a list of consensus peptides that are consistently detected in our QC runs, with the ultimate purpose of developing quality standards to monitor LC retention time variations.**
 
-**I parsed a list of 80 unique peptides based on the criteria we discussed in our meeting last week. Briefly, these peptides are consistently identified across all the QC runs I described below. They span the entire retention time span, and wherever possible, the entire m/z span we observed across the retention time. As we discussed, I prioritized Histidine containing peptides wherever possible, and 78 out of the 2 final peptides contain at least 1 histidine. I provided the list of peptides along with their features.**  
+**I parsed a list of 120 unique peptides based on the criteria we discussed in our meeting last week and your feedback after the first iteration. Briefly, these peptides are consistently identified across all the QC runs I described below. They span the entire retention time span, and wherever possible, the entire m/z span we observed across the retention time. They do not contain any missed cleavages, Met, Cys, N-terminal pyro-glutamine.** 
+
+**The resulting peptides can be used as one large list of 120 peptides, or can be tested as 3 seperate peptide lists, each containing 40 peptides, covering low, medium and high abundance domains of the dynamic range.** 
 
 
 # Choosing the relevant QC directories for peptide selection
@@ -145,7 +147,7 @@ This reduced the peptide list to **`r length(relevant.pep$bestScore)`** unique p
 
 ## Exclude peptides with Met, Cys and N-terminal pyro glutamic acid
 
-At this stage we filtered any peptide that contains **M, C or q (N-term)*.
+At this stage we filtered any peptide that contains **M, C or q (N-term)**.
 
 ```{r}
 n_ter_q <- grepl("^q",relevant.pep$sequence__NA.)
@@ -178,9 +180,11 @@ relevant.pep$Intensity.Cut.off <- factor(ifelse(median.total.intensity < median.
 
 qplot(y = log10(median.total.intensity),x = as.numeric(relevant.pep$best_parent_m_over_z__NA.), color = Intensity.Cut.off,data = relevant.pep,alpha = I(0.2))+
         scale_color_manual(values = c("red","navy"))+
-        geom_hline(yintercept = log10(median.total.intensity.T50), color = "purple", size = 1.5)+
+        geom_hline(yintercept = log10(median.total.intensity.T50), color = "brown", size = 1.5,
+                   linetype = "dashed")+
         theme(axis.text.x=element_text(angle = 45),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"))+
         ggtitle("The effect of intensity cut off filter and m/z distribution of peptides")+
@@ -205,9 +209,10 @@ Karl suggested to apply a global score filter. In order to understand what would
 library(ggplot2)
 
 ggplot(aes(x = bestScore),data = relevant.pep)+
- geom_histogram( bins = 100,fill = "blue",color= "red")+
+ geom_histogram( bins = 100,fill = "navy",color= "white")+
         theme(axis.text.x=element_text(angle = 45),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"))+
         ggtitle("Distribution of best peptide scores")+
@@ -215,11 +220,9 @@ ggplot(aes(x = bestScore),data = relevant.pep)+
   
 ```
 
-Scores have a near Gaussian distribution with a mean of **`r round(mean(relevant.pep$bestScore),2)`**. Karl suggested that any score that is above 12 is deemed good. Therfore, I applied a score filtering for the peptides have scores that are equal and greater than 12.
+Scores have a near Gaussian distribution with a mean of **`r round(mean(relevant.pep$bestScore),2)`**. Karl suggested that any score that is above 12 is deemed good. Therefore, I applied a score filtering for the peptides have scores that are equal and greater than 12.
 
 
-
-**CONTINUE HERE**
 
 ```{r}
 library(dplyr)
@@ -229,6 +232,8 @@ relevant.pep <- relevant.pep[relevant.pep$bestScore >= 12,]
 ```
 
 This reduced the peptide list to **`r length(relevant.pep$bestScore)`** unique peptides.
+
+---
 
 # Distribution of retention time
 
@@ -280,9 +285,10 @@ This subset of peptides have near-Gaussian m/z distribution with a slight right 
 ```{r,fig.align='center', fig.width=4,fig.height=4}
 
 ggplot(aes(x = best_parent_m_over_z),data = simp.peptide)+
- geom_histogram( bins = 100,fill = "red",color= "blue")+
+ geom_histogram( bins = 100,fill = "navy",color= "white")+
         theme(axis.text.x=element_text(angle = 45),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"))+
         ggtitle("Distribution of best parent m/z")+
@@ -304,9 +310,10 @@ I partitioned the data based on 8 retention time bins as we discussed in our mee
 simp.peptide$median.retentionTime.Bins <-cut(simp.peptide$median.retentionTimeMin,8)
 
 ggplot(aes(x = best_parent_m_over_z),data = simp.peptide )+
-        geom_histogram(fill = "navy", color = "red")+ facet_grid(. ~ median.retentionTime.Bins)+
+        geom_histogram(fill = "navy", color = "white")+ facet_grid(. ~ median.retentionTime.Bins)+
         theme(axis.text.x=element_text(angle = 45),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"),
               strip.background = element_rect(fill = "slateblue1"))+
@@ -327,7 +334,8 @@ It is also important to check the intensity selection of the peptides in the ret
 ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = simp.peptide )+
         geom_point(col = "navy",alpha = I(0.2))+ facet_grid(. ~ median.retentionTime.Bins)+
        theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"),
               strip.background = element_rect(fill = "slateblue1"))+
@@ -349,7 +357,8 @@ simp.peptide$histidine <- ifelse(grepl("H",toupper(simp.peptide$sequence)),"At l
 ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = simp.peptide )+
         geom_point(aes(color = histidine), alpha = I(0.3))+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
        theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
-              panel.background = element_rect(fill = "white"),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"),
               strip.background = element_rect(fill = "slateblue1"))+
@@ -360,7 +369,9 @@ ggplot(aes(x = best_parent_m_over_z, y = log(median.total.intensity)),data = sim
 
 # Modified algorihtm for the selection of peptides
 
-In the second itearation, I modified the algorithm to prepare 3 different lists across the dynamic range (abundance bins).
+In the second iteration, I modified the algorithm to prepare 3 different lists across the dynamic range (abundance bins).
+
+**Note that in this version I choose the final peptide randomly, without biasing towards Histidine containing peptides. Even in this approach, we end up with fair amount of Histidine containing peptides in each retention time bin (see later).**
 
 Peptides will be selected based on the following algorithm:
 
@@ -381,6 +392,9 @@ Peptides will be selected based on the following algorithm:
 
 
 peptide.selector <- function(simp.peptide){
+        
+         set.seed(12345)
+        
          temp.selected.peptide <- NULL
          final.selected.peptides <- NULL
          
@@ -389,7 +403,7 @@ peptide.selector <- function(simp.peptide){
                 temp <- simp.peptide[simp.peptide$median.retentionTime.Bins == levels(simp.peptide$median.retentionTime.Bins)[i],]
                 
                 # Prepare 3 equal **intensity(abundance)** bins 
-                temp$log10.intensity.Bins <- cut(log10(temp$median.total.intensity),3, labels = c("low","medium","high"))
+                temp$log10.intensity.Bins <- cut(log10(temp$median.total.intensity),3, labels = c("low abundance","medium abundance","high abundance"))
 
                 for(k in seq_along(levels(temp$log10.intensity.Bins))){
                 # For a given abundance bin
@@ -400,39 +414,78 @@ peptide.selector <- function(simp.peptide){
                                 # For a given m/z bin:
                                 temp_mz <- temp_abundance[temp_abundance$m_over_z_bins == levels(temp_abundance$m_over_z_bins)[j],] 
                                 #Randomly choose a peptide
-                                temp_peptide <- sample(temp_mz[,1:ncol(temp_mz)])
-                                        
-                                if(length(levels(factor(temp_mz$histidine))) == 2){
-                                        temp.selected.peptide <- temp_mz$sequence[temp_mz$histidine == "At least one H"][1]
-                                }else{
-                                        temp.selected.peptide <- temp_mz$sequence[1]
+                                temp_peptide <- sample(temp_mz$sequence,1)
+                                
+                                temp_peptide_data <- temp_mz[which(temp_mz$sequence == temp_peptide),]
+                                if(nrow(temp_peptide_data) > 0 ){
+                                 
+                                final.selected.peptides <- rbind(final.selected.peptides, temp_peptide_data)        
                                 }
                                         
-                            final.selected.peptides <- c(final.selected.peptides, temp.selected.peptide) 
+                            
                         }
                 
-        }
+        
          # Return a data frame with all features of the selected 80 peptides:
+                }
+        }
          
-         selected.peptides <- simp.peptide[simp.peptide$sequence %in% final.selected.peptides,]
-         return(selected.peptides)
+         return(final.selected.peptides)
 }
+         
 
 selected.peptides <- peptide.selector(simp.peptide = simp.peptide)
 
 ```
 
-# Exploring the final selection of peptides
+
+This provides us a final list of 120 peptides. We can use this list either as it is, or as 3 separate lists, each contain 40 peptides and represent 'low','medium' or 'high' abundance ranges within each retention time bin.
+
+# Exploring the final selection of 120 peptides
 
 
 ```{r,fig.width=12, fig.align="center", fig.height=4}
 # Explore at least one Histidine containing peptides
 
 ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = selected.peptides )+
+        #geom_line(color = "navy")+
+        geom_point(aes(color = log10.intensity.Bins), size = 2)+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("green","navy","red"))+
+        theme(axis.text.x=element_text(angle = 45,vjust = 0.5, size = 8),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
+              panel.grid.major.x = element_line(color = "slateblue1",size = 0.5,linetype = "dotted"),
+              panel.grid.minor.x = element_line(color = "slateblue1",size = 0.2,linetype = "dotted"),
+              panel.grid.major.y = element_line(color = "slateblue1",size = 0.5,linetype = "dotted"),
+              strip.text.x = element_text(color = "white"),
+              title = element_text(vjust = 0.5),
+              plot.title = element_text(hjust = 0.5, face = "bold"),
+              strip.background = element_rect(fill = "slateblue1"))+ 
+        ggtitle("Retention time bins (8 x 11 min bins)")+
+        xlab("Best parent m/z")
+```
+
+**Note that the low-medium-high intensity bins are all relative to a given retention time bin.** 
+
+
+# Presence of histidine containing peptides in each retention time bin
+
+In the last iteration, Karl suggested that it is sufficient to have at least one Histidine containing peptide in each retention time bin. Therefore, I checked the final list of peptides whether we can fulfill this need:
+
+
+```{r,fig.width=12, fig.align="center", fig.height=6}
+# Explore at least one Histidine containing peptides
+
+ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = selected.peptides )+
         geom_line(color = "navy")+
-        geom_point(aes(color = histidine), size = 2)+ facet_grid(. ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
-        theme(axis.text.x=element_text(angle = 45,vjust = 0.5),
-              panel.background = element_rect(fill = "white"),
+        geom_point(aes(color = histidine ), size = 2)+ facet_grid(log10.intensity.Bins ~ median.retentionTime.Bins)+ scale_color_manual(values = c("red","navy"))+
+        theme(axis.text.x=element_text(angle = 45,vjust = 0.5, size = 8),
+              panel.background = element_blank(),
+              panel.border = element_rect(color = "slateblue1",size = 0.5, fill = FALSE),
+              panel.grid.major.x = element_line(color = "slateblue1",size = 0.5,linetype = "dotted"),
+              panel.grid.minor.x = element_line(color = "slateblue1",size = 0.2,linetype = "dotted"),
+              panel.grid.major.y = element_line(color = "slateblue1",size = 0.5,linetype = "dotted"),
+              strip.text.y = element_text(color = "white"),
+              strip.text.x = element_text(color = "white"),
               title = element_text(vjust = 0.5),
               plot.title = element_text(hjust = 0.5, face = "bold"),
               strip.background = element_rect(fill = "slateblue1"))+ 
@@ -442,9 +495,11 @@ ggplot(aes(x = best_parent_m_over_z, y = log10(median.total.intensity)),data = s
 
 **Note that I just connected the peptide data points to make any trends in intensity fluctations more obvious.**
 
+- If we use the list collapsed across the abundance bins, then there is at least one H containing peptide in each retention time bin.
+
 These **`r length(unique(selected.peptides$sequence))`** distinct peptides come from **`r length(unique(selected.peptides$accession_number))`** unique proteins (uniprot accession number).
 
-# Final list of the 80 selected peptides and their features
+# Final list of the 120 selected peptides and their features
 
 Therefore, we have selected a fair amount of peptides that are both representative (i.e: detected in all of the QC runs we profiled) as well as spanning retention time and m/z spans fairly well. I welcome your feedback on refining the selection of peptides as necessary.
 
@@ -453,8 +508,13 @@ The current selection of the peptides are:
 ```{r}
 knitr::kable(selected.peptides, align = "c", format = "pandoc",row.names = F)
 setwd("Z:/LabMembers/Ozan/RetentionTimePeptides")
-write.csv(selected.peptides,file = "Selected.peptides.csv", row.names = FALSE)
 
+write.csv(selected.peptides,file = "Selected_peptides_complete_list.csv", row.names = FALSE)
+write.csv(selected.peptides[selected.peptides$log10.intensity.Bins == "low abundance",],file = "Selected_peptides_lowAbundance_list.csv", row.names = FALSE)
+write.csv(selected.peptides[selected.peptides$log10.intensity.Bins == "medium abundance",],file = "Selected_peptides_mediumAbundance_list.csv", row.names = FALSE)
+write.csv(selected.peptides[selected.peptides$log10.intensity.Bins == "high abundance",],file = "Selected_peptides_highAbundance_list.csv", row.names = FALSE)
+
+setwd(".")
 ```
 
   
