@@ -215,16 +215,16 @@ ggplot(aes(x = bestScore),data = relevant.pep)+
   
 ```
 
-Scores have a near Gaussian distribution with a mean of **`r round(mean(relevant.pep$bestScore),2)`**. We choose to include peptides that have the bestScores above the 20th percentile of the best score distribution:
+Scores have a near Gaussian distribution with a mean of **`r round(mean(relevant.pep$bestScore),2)`**. Karl suggested that any score that is above 12 is deemed good. Therfore, I applied a score filtering for the peptides have scores that are equal and greater than 12.
 
-_____
+
 
 **CONTINUE HERE**
 
 ```{r}
 library(dplyr)
-mean.score <- mean(relevant.pep$bestScore)
-relevant.pep <- relevant.pep[relevant.pep$bestScore > mean.score,]
+
+relevant.pep <- relevant.pep[relevant.pep$bestScore >= 12,]
 
 ```
 
@@ -252,7 +252,7 @@ hist(relevant.pep$median.retentionTimeMin, breaks = 100, col = "purple",
      xlab = "Median Retention Time Across all QC runs")
 ```
 
-As we expected, we generally have more peptides in the higher retention time range.
+As we expected, we generally have more peptides in the mid-higher retention time range.
 
 At this point, I simplified the data by using summary metrics that are robust to outliers. 
 
@@ -275,7 +275,7 @@ simp.peptide$best_parent_m_over_z <- as.numeric(simp.peptide$best_parent_m_over_
 
 # Distribution of m/z
 
-This subset of peptides have near-Gaussian m/z distribution:
+This subset of peptides have near-Gaussian m/z distribution with a slight right skew:
 
 ```{r,fig.align='center', fig.width=4,fig.height=4}
 
@@ -368,7 +368,7 @@ Peptides will be selected based on the following algorithm:
 - For a given retention time bin:
     + Prepare 3 equal **intensity(abundance)** bins 
          + For a given abundance bin:
-         + Prepare 10 equal m/z bins
+         + Prepare 5 equal m/z bins
          + For a given m/z bin:
              + **Randomly** choose a peptide (do not bootstrap)
              
@@ -379,7 +379,6 @@ Peptides will be selected based on the following algorithm:
 
 # First define intensity bins
 
-simp.peptide$log10.intensity.Bins <- cut(log10(simp.peptide$median.total.intensity),3)
 
 peptide.selector <- function(simp.peptide){
          temp.selected.peptide <- NULL
@@ -388,16 +387,20 @@ peptide.selector <- function(simp.peptide){
         for(i in seq_along(levels(simp.peptide$median.retentionTime.Bins))){
                 # For a given retention time bin:
                 temp <- simp.peptide[simp.peptide$median.retentionTime.Bins == levels(simp.peptide$median.retentionTime.Bins)[i],]
-                for(k in seq_along(levels(simp.peptide$log10.intensity.Bins))){
+                
+                # Prepare 3 equal **intensity(abundance)** bins 
+                temp$log10.intensity.Bins <- cut(log10(temp$median.total.intensity),3, labels = c("low","medium","high"))
+
+                for(k in seq_along(levels(temp$log10.intensity.Bins))){
                 # For a given abundance bin
                  temp_abundance <- temp[temp$log10.intensity.Bins == levels(temp$log10.intensity.Bins)[k],]        
-                # Prepare 10 equal m/z bins:
-                        temp_abundance$m_over_z_bins <- cut(temp_abundance$best_parent_m_over_z,10)
+                # Prepare 5 equal m/z bins:
+                        temp_abundance$m_over_z_bins <- cut(temp_abundance$best_parent_m_over_z,5)
                         for(j in seq_along(levels(temp_abundance$m_over_z_bins))){
                                 # For a given m/z bin:
                                 temp_mz <- temp_abundance[temp_abundance$m_over_z_bins == levels(temp_abundance$m_over_z_bins)[j],] 
                                 #Randomly choose a peptide
-                                temp_peptide <- 
+                                temp_peptide <- sample(temp_mz[,1:ncol(temp_mz)])
                                         
                                 if(length(levels(factor(temp_mz$histidine))) == 2){
                                         temp.selected.peptide <- temp_mz$sequence[temp_mz$histidine == "At least one H"][1]
