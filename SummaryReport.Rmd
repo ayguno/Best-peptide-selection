@@ -27,6 +27,7 @@ ___
 
 **The resulting peptides can be used as one large list of 120 peptides, or can be tested as 3 seperate peptide lists, each containing 40 peptides, covering low, medium and high abundance domains of the dynamic range.** 
 
+___
 
 # Choosing the relevant QC directories for peptide selection
 
